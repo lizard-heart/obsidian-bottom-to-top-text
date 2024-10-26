@@ -159,8 +159,6 @@ export default class EnterAboveLinePlugin extends Plugin {
 		this.registerDomEvent(document, 'keydown', (event: KeyboardEvent) => {
 			// Check if Enter key is pressed
 			if (event.key === 'Enter') {
-				console.log("Enter key pressed");
-
 				// Define an async function to handle the asynchronous operations
 				const handleEnterKey = async () => {
 					// Get the active editor (for markdown files)
@@ -169,14 +167,12 @@ export default class EnterAboveLinePlugin extends Plugin {
 
 					// Check the property
 					const isTrue = await isPropertyTrue.call(this, activeView.file, "reverseStatus");
-					console.log(isTrue);
 
 					// Ensure we're in a Markdown view and the property is true
 					if (!isTrue) return;
 
 					const editor = activeView.editor; // Get the CodeMirror editor instance
 					const cursor = editor.getCursor();
-					console.log(cursor);
 
 					// Insert a new line exactly at the current line, shifting everything below
 					editor.replaceRange('\n', { line: cursor.line - 1, ch: 0 });
