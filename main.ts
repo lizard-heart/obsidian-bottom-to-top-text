@@ -5,7 +5,7 @@ export default class EnterAboveLinePlugin extends Plugin {
 		// Inside your plugin's `onload` method
 		this.addCommand({
 			id: "add-property",
-			name: "Turn On Reverse Mode for Current Note",
+			name: "Turn on reverse mode for current note",
 			editorCallback: (editor, view) => {
 				const propertyKey = "reverseStatus";
 				const propertyValue = "true";
@@ -16,48 +16,27 @@ export default class EnterAboveLinePlugin extends Plugin {
 					return;
 				}
 
-				// Get the current note's content
-				this.app.vault.read(file).then((content) => {
-					// Check for existing frontmatter
-					const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
-					const match = content.match(frontmatterRegex);
+				// fixed to use processFrontMatter
+				this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+					// Ensure the property value is a boolean
+					const value = !!propertyValue; // Coerce to boolean (true/false)
 
-					if (match) {
-						// Frontmatter exists, so update it
-						const currentFrontmatter = match[1];
-						if (currentFrontmatter.includes(propertyKey)) {
-							// If the property exists, replace it with the new value
-							const updatedFrontmatter = currentFrontmatter.replace(
-								new RegExp(`${propertyKey}:.*`, "g"),
-								`${propertyKey}: ${propertyValue}`
-							);
-							const newContent = content.replace(
-								frontmatterRegex,
-								`---\n${updatedFrontmatter}\n---\n`
-							);
-							this.app.vault.modify(file, newContent);
-						} else {
-							// Add the new property if it doesn't exist
-							const newFrontmatter = `${currentFrontmatter}\n${propertyKey}: ${propertyValue}`;
-							const newContent = content.replace(
-								frontmatterRegex,
-								`---\n${newFrontmatter}\n---\n`
-							);
-							this.app.vault.modify(file, newContent);
-						}
+					if (typeof frontmatter[propertyKey] === "boolean") {
+						// Update the existing property
+						frontmatter[propertyKey] = value;
 					} else {
-						// No frontmatter exists, so create one
-						const newContent = `---\n${propertyKey}: ${propertyValue}\n---\n${content}`;
-						this.app.vault.modify(file, newContent);
+						// Add the new property as a boolean
+						frontmatter[propertyKey] = value;
 					}
 				});
+
 			},
 		});
 
 		// Inside your plugin's `onload` method
 		this.addCommand({
 			id: "set-property-false",
-			name: "Turn Off Reverse Mode for Current Note",
+			name: "Turn off reverse mode for current note",
 			editorCallback: (editor, view) => {
 				const propertyKey = "reverseStatus";
 				const propertyValue = "false";
@@ -106,43 +85,30 @@ export default class EnterAboveLinePlugin extends Plugin {
 			},
 		});
 
-		// Use an async function to return a Promise<boolean>
-		const isPropertyTrue = async (file: TFile, propertyKey: string): Promise<boolean> => {
+		const isPropertyTrue = (file: TFile, propertyKey: string): boolean => {
 			try {
-				const content = await this.app.vault.read(file);
+				// Get the metadata for the file
+				const metadata = this.app.metadataCache.getFileCache(file);
 
-				if (typeof content !== "string") {
-					console.error("File content is not a string.");
+				if (!metadata || !metadata.frontmatter) {
+					// No metadata or frontmatter present
 					return false;
 				}
 
-				// Regex to match frontmatter
-				const frontmatterRegex = /^---\n([\s\S]*?)\n---\n/;
-				const match = content.match(frontmatterRegex);
+				// Retrieve the property value from the frontmatter
+				const propertyValue = metadata.frontmatter[propertyKey];
 
-				if (match) {
-					// Extract the frontmatter content
-					const frontmatter = match[1];
-					// Look for the property in the form `propertyKey: true`
-					const propertyRegex = new RegExp(`${propertyKey}:\\s*true`, "i");
-					return propertyRegex.test(frontmatter);
-				} else {
-					// No frontmatter, so return false
-					return false;
-				}
+				// Check if the property is explicitly set to true
+				return propertyValue === true;
 			} catch (error: unknown) {
-				console.error("Error reading file content:", error);
+				console.error("Error retrieving metadata:", error);
 				return false;
 			}
 		};
 
-
-
-
-
 		this.addCommand({
 			id: 'reverse-lines',
-			name: 'Reverse Lines in Current Note',
+			name: 'Reverse lines in current note',
 			editorCallback: (editor, view) => {
 				// Get all the lines in the current note
 				const allText = editor.getValue();
